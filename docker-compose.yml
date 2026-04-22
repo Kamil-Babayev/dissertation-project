@@ -1,0 +1,68 @@
+
+services:
+  # --- Monolith ---
+  monolith:
+    build:
+      context: .
+      dockerfile: build/monolith.Dockerfile
+    ports:
+      - "8081:8080"
+    environment:
+      - PORT=8081
+    deploy:
+      resources:
+        limits:
+          cpus: '1.0'
+          memory: 512M
+
+  # --- Microservices ---
+  gateway:
+    build:
+      context: .
+      dockerfile: build/gateway.Dockerfile
+    ports:
+      - "8080:8080"
+    depends_on:
+      - validator
+      - transaction
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  validator:
+    build:
+      context: .
+      dockerfile: build/validator.Dockerfile
+    deploy:
+      replicas: 1
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  transaction:
+    build:
+      context: .
+      dockerfile: build/transaction.Dockerfile
+    deploy:
+      resources:
+        limits:
+          cpus: '0.5'
+          memory: 256M
+
+  # DB for both systems
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_DB=deposit_db
+      - POSTGRES_PASSWORD=pass
+
+  # k6 for tests
+  k6:
+    image: grafana/k6:latest
+    profiles:
+      - tools
+    volumes:
+      - ./scripts:/scripts
